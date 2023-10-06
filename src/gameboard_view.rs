@@ -64,35 +64,17 @@ impl GameboardView {
     ) 
     where C: CharacterCache<Texture = G::Texture>
     {
-        use graphics::{Image, Line, Rectangle, Transformed};
+        use graphics::{Image, Rectangle, Transformed};
 
         let ref settings = self.settings;
-        
-        let cell_edge =
-            Line::new(settings.border_color, settings.cell_edge_radius);
-
-        // Generate and draw the lines for the grid.
-        for i in 0..8 {
-            let x = settings.position[0] + i as f64 / 8.0 * settings.size;
-            let y = settings.position[1] + i as f64 / 8.0 * settings.size;
-            let x2 = settings.position[0] + settings.size;
-            let y2 = settings.position[1] + settings.size;
-
-            let vline = [x, settings.position[1], x, y2];
-            let hline = [settings.position[0], y, x2, y];
-
-            cell_edge.draw(vline, &c.draw_state, c.transform, g);
-            cell_edge.draw(hline, &c.draw_state, c.transform, g);
-            
-        }
 
         let cell_size = settings.size / 8.0;
         for rank in 0..8 {  
             for file in 0..8 {
                 let pos = [file as f64 * cell_size, (7 - rank) as f64 * cell_size];
                 let cell_rect = [
-                    settings.position[0] + pos[0] + 1.0, settings.position[1] + pos[1] + 1.0,
-                    cell_size - 2.0, cell_size - 2.0
+                    settings.position[0] + pos[0], settings.position[1] + pos[1],
+                    cell_size, cell_size
                 ];
                 let mut square_color = match (file + rank) % 2 == 0 {
                     false => settings.light_square_color,
@@ -100,14 +82,14 @@ impl GameboardView {
                 };
                 if let Some(selected_cell) = controller.selected_cell.clone() {
                     if selected_cell == BoardPos::new(file, rank) {
-                        square_color[1] += 0.2;
+                        square_color[1] += 0.25;
                     }
                     else if controller.selected_cell_moves.contains(&BoardPos::new(file, rank)) {
                         if controller.gameboard.get_tile(&BoardPos::new(file, rank)).is_some() {
                             square_color[0] += 0.2;
                         }
                         else {
-                            square_color[1] += 0.2;
+                            square_color[1] += 0.25;
                         }
                     }
                 }

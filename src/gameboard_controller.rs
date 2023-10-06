@@ -12,6 +12,7 @@ pub struct GameboardController {
     pub selected_cell: Option<BoardPos>,
     pub selected_cell_moves: HashSet<BoardPos>,
     pub ongoing_promotion: Option<BoardPos>,
+    ongoing_promotion_from: BoardPos,
     pub hovered_promotion_square: Option<usize>,
     pub is_check: bool,
     pub is_checkmate: bool,
@@ -27,6 +28,7 @@ impl GameboardController {
             selected_cell: None,
             selected_cell_moves: HashSet::new(),
             ongoing_promotion: None,
+            ongoing_promotion_from: BoardPos::new(0, 0),
             hovered_promotion_square: None,
             is_check: false,
             is_checkmate: false,
@@ -36,8 +38,8 @@ impl GameboardController {
     }
 
     /// Handles events.
-    pub fn event<E: GenericEvent>(&mut self, pos: [f64; 2], size: f64, e: &E) {
-        use piston::input::{Button, Key, MouseButton};
+    pub fn event<E: GenericEvent>(&mut self, pos: [f64; 2], size: f64, e: &E) -> Option<(BoardPos, BoardPos, usize)> {
+        use piston::input::{Button, MouseButton};
 
         if let Some(cursor_pos) = e.mouse_cursor_args() {
             self.cursor_pos = cursor_pos;
@@ -75,8 +77,11 @@ impl GameboardController {
                         _ => PieceType::Queen
                     };
                     self.gameboard.promote(promotion);
+                    let to = self.ongoing_promotion.clone().unwrap();
+                    let from = self.ongoing_promotion_from.clone();
                     self.ongoing_promotion = None;
                     self.hovered_promotion_square = None;
+                    return Some((from, to, hovered_square));
                 }
             }
             else {  
@@ -95,15 +100,23 @@ impl GameboardController {
                                     self.update_selected_cell_moves();
                                 }
                                 else {
-                                    self.check_selected_move(selected_cell, clicked_cell);
+                                    let mut mv = None;
+                                    if self.check_selected_move(&selected_cell, &clicked_cell) {
+                                        mv = Some((selected_cell, clicked_cell, 0));
+                                    };
                                     self.selected_cell = None;
                                     self.selected_cell_moves.drain();
+                                    return mv;
                                 }
                             }
                             else {
-                                self.check_selected_move(selected_cell, clicked_cell);
+                                let mut mv = None;
+                                if self.check_selected_move(&selected_cell, &clicked_cell) {
+                                    mv = Some((selected_cell, clicked_cell, 0));
+                                };
                                 self.selected_cell = None;
                                 self.selected_cell_moves.drain();
+                                return mv;
                             }
                         }
                     }
@@ -120,21 +133,7 @@ impl GameboardController {
                 }
             }
         }
-        
-        if let Some(Button::Keyboard(key)) = e.press_args() {
-            match key {
-                Key::R => {
-                    self.gameboard = Game::new();
-                    self.ongoing_promotion = None;
-                    self.selected_cell = None;
-                    self.selected_cell_moves.drain();
-                    self.is_check = false;
-                    self.is_checkmate = false;
-                    self.animation.cancel_current_animation();
-                }
-                _ => {}
-            }
-        }
+        return None;
     }
 
     fn update_selected_cell_moves(&mut self) {
@@ -152,8 +151,8 @@ impl GameboardController {
         }
     }
 
-    fn check_selected_move(&mut self, from: BoardPos, to: BoardPos) -> bool {
-        if !self.animation.running && self.selected_cell_moves.contains(&to) {
+    pub fn check_selected_move(&mut self, from: &BoardPos, to: &BoardPos) -> bool {
+        
             match self.gameboard.move_piece(&from, &to) {
                 Ok(_) => {
                     println!("Moved");
@@ -172,12 +171,10 @@ impl GameboardController {
                 GameState::Checkmate(_) => self.is_checkmate = true,
                 GameState::PromotionRequired(_) => {
                     println!("Select promotion!");
-                    self.ongoing_promotion = Some(to);
-                    //self.gameboard.promote(PieceType::Queen);
+                    self.gameboard.promote(PieceType::Queen);
+                    return true;
                 },
             };
             return true;
         }
-        return false;
-    }
 }
